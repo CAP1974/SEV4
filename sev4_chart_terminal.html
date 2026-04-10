@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEV4 Chart Terminal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg0: #07090e; --bg1: #0c1218; --bg2: #090e14;
+    --brd: #182030; --lbl: #445e78; --hdr: #6e8ba8;
+    --wht: #d8e6f0; --grn: #00d68f; --grn2: #009060;
+    --red: #ff4560; --yel: #ffb800; --blu: #4dabf7; --pur: #9c6bff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg0); color: var(--wht); font-family: 'Courier New', monospace; font-size: 12px; min-height: 100vh; }
+
+  /* HEADER */
+  #header {
+    display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+    background: var(--bg1); border-bottom: 1px solid var(--brd);
+    flex-wrap: wrap; position: sticky; top: 0; z-index: 50;
+  }
+  .logo { color: var(--grn); font-weight: bold; font-size: 15px; letter-spacing: 2px; margin-right: 4px; }
+  .logo span { color: var(--lbl); font-size: 11px; font-weight: normal; }
+  input#tk {
+    background: var(--bg0); border: 1px solid var(--brd); color: var(--wht);
+    padding: 5px 12px; border-radius: 4px; font-family: 'Courier New', monospace;
+    font-size: 13px; width: 120px; text-transform: uppercase; letter-spacing: 1px;
+  }
+  input#tk:focus { outline: none; border-color: var(--grn); box-shadow: 0 0 0 2px rgba(0,214,143,0.15); }
+  select#tf {
+    background: var(--bg0); border: 1px solid var(--brd); color: var(--wht);
+    padding: 5px 10px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12px;
+  }
+  #loadBtn {
+    background: var(--grn); color: var(--bg0); border: none; padding: 6px 20px;
+    border-radius: 4px; cursor: pointer; font-family: 'Courier New', monospace;
+    font-size: 13px; font-weight: bold; letter-spacing: 1px; transition: background 0.2s;
+  }
+  #loadBtn:hover { background: var(--grn2); }
+  #loadBtn:disabled { background: #445e78; cursor: not-allowed; }
+  .tog {
+    background: transparent; color: var(--blu); border: 1px solid var(--blu);
+    padding: 4px 10px; border-radius: 4px; cursor: pointer;
+    font-family: 'Courier New', monospace; font-size: 11px; transition: all 0.15s;
+  }
+  .tog.on { background: var(--blu); color: var(--bg0); }
+  .tog.grn-tog { color: var(--grn); border-color: var(--grn); }
+  .tog.grn-tog.on { background: var(--grn); color: var(--bg0); }
+  .tog.red-tog { color: var(--red); border-color: var(--red); }
+  .tog.red-tog.on { background: var(--red); color: var(--bg0); }
+  #pxDisplay { margin-left: auto; font-size: 15px; font-weight: bold; }
+
+  /* STATUS BAR */
+  #statusBar {
+    display: none; align-items: center; gap: 16px; padding: 6px 16px;
+    background: var(--bg2); border-bottom: 1px solid var(--brd);
+    font-size: 11px; flex-wrap: wrap;
+  }
+  .si { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .sep { color: var(--brd); }
+
+  /* WATCHLIST QUICKBAR */
+  #watchbar {
+    display: flex; align-items: center; gap: 6px; padding: 6px 16px;
+    background: var(--bg1); border-bottom: 1px solid var(--brd);
+    overflow-x: auto; white-space: nowrap;
+  }
+  .wlbl { color: var(--lbl); font-size: 10px; letter-spacing: 1px; margin-right: 4px; }
+  .wtag {
+    background: var(--bg2); border: 1px solid var(--brd); color: var(--hdr);
+    padding: 3px 10px; border-radius: 3px; cursor: pointer; font-size: 11px;
+    font-family: 'Courier New', monospace; transition: all 0.15s; white-space: nowrap;
+  }
+  .wtag:hover { border-color: var(--grn); color: var(--grn); }
+
+  /* MAIN LAYOUT */
+  #main { display: grid; grid-template-columns: 1fr 210px; gap: 8px; padding: 10px; }
+  #chartsCol { display: flex; flex-direction: column; gap: 6px; }
+  #sidebar { display: flex; flex-direction: column; gap: 6px; }
+
+  /* CHART PANELS */
+  .cpanel {
+    background: var(--bg1); border: 1px solid var(--brd); border-radius: 6px; padding: 8px;
+  }
+  .clbl {
+    font-size: 10px; color: var(--lbl); letter-spacing: 1px; text-transform: uppercase;
+    margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .clbl .cv { color: var(--hdr); font-size: 11px; letter-spacing: 0; }
+  .cwrap { position: relative; }
+
+  /* SIDEBAR PANELS */
+  .spanel {
+    background: var(--bg1); border: 1px solid var(--brd); border-radius: 6px; padding: 10px;
+  }
+  .ptitle {
+    color: var(--grn); font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    margin-bottom: 8px; border-bottom: 1px solid var(--brd); padding-bottom: 5px;
+  }
+  .srow {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 3px 0; border-bottom: 1px solid rgba(24,32,48,0.5); font-size: 11px;
+  }
+  .srow:last-child { border: none; }
+  .slbl { color: var(--lbl); }
+  .qrow { display: flex; justify-content: space-between; padding: 2px 0; font-size: 11px; }
+
+  /* COLORS */
+  .grn { color: var(--grn); } .red { color: var(--red); }
+  .yel { color: var(--yel); } .blu { color: var(--blu); }
+  .pur { color: var(--pur); } .wht { color: var(--wht); }
+  .bold { font-weight: bold; }
+
+  /* SCORE */
+  .score-big { font-size: 26px; font-weight: bold; text-align: center; margin: 6px 0 2px; }
+  .score-sub { font-size: 10px; color: var(--lbl); text-align: center; margin-bottom: 6px; }
+
+  /* ANALYZE BTN */
+  .abtn {
+    background: var(--grn); color: var(--bg0); border: none; width: 100%;
+    padding: 6px; border-radius: 4px; cursor: pointer; font-family: 'Courier New', monospace;
+    font-size: 11px; font-weight: bold; letter-spacing: 1px; margin-top: 8px; transition: background 0.2s;
+  }
+  .abtn:hover { background: var(--grn2); }
+
+  /* LOADING / MSG */
+  #msgBox {
+    text-align: center; padding: 60px 20px; color: var(--lbl); font-size: 13px;
+  }
+  .spinner {
+    display: inline-block; width: 20px; height: 20px; border: 2px solid var(--brd);
+    border-top-color: var(--grn); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* GATE badges */
+  .gbadge {
+    font-size: 11px; font-weight: bold; padding: 1px 8px; border-radius: 3px;
+  }
+  .gbadge.pass { background: rgba(0,214,143,0.15); color: var(--grn); }
+  .gbadge.fail { background: rgba(255,69,96,0.15); color: var(--red); }
+  .gbadge.warn { background: rgba(255,184,0,0.15); color: var(--yel); }
+
+  /* REFS TABLE */
+  #refTable { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 6px; }
+  #refTable td { padding: 3px 8px; border-bottom: 1px solid rgba(24,32,48,0.5); }
+  #refTable tr:last-child td { border: none; }
+  #refTable td:first-child { color: var(--lbl); }
+  #refTable td:last-child { text-align: right; color: var(--hdr); font-family: 'Courier New', monospace; }
+
+  /* FOOTER */
+  #footer {
+    text-align: center; padding: 10px; color: var(--lbl); font-size: 10px;
+    border-top: 1px solid var(--brd); margin-top: 4px;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    #main { grid-template-columns: 1fr; }
+    #sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <span class="logo">SEV4 <span>CHART TERMINAL</span></span>
+  <input id="tk" type="text" value="PRY.MI" placeholder="Ticker (ex: PRY.MI)" />
+  <select id="tf">
+    <option value="D" selected>1D</option>
+    <option value="W">1W</option>
+    <option value="60">1H</option>
+    <option value="15">15m</option>
+  </select>
+  <button id="loadBtn" onclick="go()">▶ CARREGAR</button>
+  <span style="color:var(--lbl);font-size:10px;margin-left:4px">Overlay:</span>
+  <button class="tog on" id="tE9"  onclick="togVis('e9',this)">EMA9</button>
+  <button class="tog on" id="tE21" onclick="togVis('e21',this)">EMA21</button>
+  <button class="tog on grn-tog" id="tE50" onclick="togVis('e50',this)">EMA50</button>
+  <button class="tog red-tog"    id="tATR" onclick="togVis('atr',this)">ATR Stop</button>
+  <span id="pxDisplay"></span>
+</div>
+
+<!-- STATUS BAR -->
+<div id="statusBar">
+  <span class="si"><span class="dot" id="dS" style="background:var(--lbl)"></span><span id="lS" style="color:var(--lbl)">STAGE —</span></span>
+  <span class="sep">|</span>
+  <span class="si"><span class="dot" id="dG1" style="background:var(--lbl)"></span><span id="lG1" style="color:var(--lbl)">G1 —</span></span>
+  <span class="sep">|</span>
+  <span class="si"><span style="color:var(--lbl)">ADX:</span> <span id="lADX" class="yel">—</span></span>
+  <span class="si"><span style="color:var(--lbl)">ATR%:</span> <span id="lATR" class="yel">—</span></span>
+  <span class="si"><span style="color:var(--lbl)">Vol:</span> <span id="lVOL" class="wht">—</span></span>
+  <span class="si"><span style="color:var(--lbl)">EMA9:</span> <span id="lE9" class="wht">—</span></span>
+  <span class="si"><span style="color:var(--lbl)">EMA21:</span> <span id="lE21" class="wht">—</span></span>
+  <span class="si"><span style="color:var(--lbl)">EMA50:</span> <span id="lE50" class="wht">—</span></span>
+</div>
+
+<!-- WATCHLIST QUICKBAR -->
+<div id="watchbar">
+  <span class="wlbl">CARTEIRA EUR:</span>
+  <span class="wtag" onclick="load('DOF.OL')">DOF.OL</span>
+  <span class="wtag" onclick="load('ERIC-B.ST')">ERIC-B.ST</span>
+  <span class="wtag" onclick="load('NDX1.DE')">NDX1.DE</span>
+  <span class="wtag" onclick="load('OMV.VI')">OMV.VI</span>
+  <span class="wtag" onclick="load('PRY.MI')">PRY.MI</span>
+  <span class="wtag" onclick="load('SPM.MI')">SPM.MI</span>
+  <span class="wtag" onclick="load('005930.KS')">SAMSUNG</span>
+  <span class="wlbl" style="margin-left:12px">BENCHMARKS:</span>
+  <span class="wtag" onclick="load('EXS1.DE')">EXS1 (EUR)</span>
+  <span class="wtag" onclick="load('SPY')">SPY (US)</span>
+  <span class="wtag" onclick="load('GALP.LS')">GALP.LS</span>
+  <span class="wtag" onclick="load('EDP.LS')">EDP.LS</span>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="chartsCol">
+    <div class="cpanel" style="height:330px">
+      <div class="clbl">PREÇO + EMAs + ATR Stop <span class="cv" id="ciP"></span></div>
+      <div class="cwrap" style="height:296px"><canvas id="cP" role="img" aria-label="Gráfico de preços com EMAs e ATR Stop"></canvas></div>
+    </div>
+    <div class="cpanel" style="height:120px">
+      <div class="clbl">VOLUME <span class="cv" id="ciV"></span></div>
+      <div class="cwrap" style="height:90px"><canvas id="cV" role="img" aria-label="Volume com média 20 períodos"></canvas></div>
+    </div>
+    <div class="cpanel" style="height:120px">
+      <div class="clbl">ADX — Força da Tendência <span class="cv" id="ciA"></span></div>
+      <div class="cwrap" style="height:90px"><canvas id="cA" role="img" aria-label="ADX com +DI e -DI"></canvas></div>
+    </div>
+    <div id="msgBox">Introduz o ticker ou clica num ativo da carteira ↑</div>
+  </div>
+
+  <div id="sidebar">
+    <div class="spanel" id="sScore">
+      <div class="ptitle">SEV4 Score</div>
+      <div style="color:var(--lbl);font-size:11px;padding:10px 0">Carrega um ativo para ver o score parcial</div>
+    </div>
+    <div class="spanel" id="sGates" style="display:none">
+      <div class="ptitle">Gates G1-G3</div>
+      <div id="gatesContent"></div>
+    </div>
+    <div class="spanel" id="sMetrics" style="display:none">
+      <div class="ptitle">Indicadores</div>
+      <div id="metricsContent"></div>
+    </div>
+    <div class="spanel">
+      <div class="ptitle">Tickers Yahoo Finance</div>
+      <table id="refTable">
+        <tr><td>Bolsa Lisboa</td><td>.LS</td></tr>
+        <tr><td>Bolsa Paris</td><td>.PA</td></tr>
+        <tr><td>Xetra (DE)</td><td>.DE</td></tr>
+        <tr><td>Milão</td><td>.MI</td></tr>
+        <tr><td>Oslo</td><td>.OL</td></tr>
+        <tr><td>Estocolmo</td><td>.ST</td></tr>
+        <tr><td>Viena</td><td>.VI</td></tr>
+        <tr><td>NYSE/NASDAQ</td><td>(sem sufixo)</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="footer">Swing Edge Pro V4 — Chart Terminal | Dados: Yahoo Finance | Weinstein · Minervini · O'Neil · Livermore</div>
+
+<script>
+// ── STATE
+let cP, cV, cA, D = null;
+const vis = { e9: true, e21: true, e50: true, atr: false };
+
+// ── HELPERS
+function togVis(k, b) { vis[k] = !vis[k]; b.classList.toggle('on', vis[k]); if (D) render(D); }
+function load(t) { document.getElementById('tk').value = t; go(); }
+
+function calcEMA(arr, p) {
+  const k = 2 / (p + 1), r = new Array(arr.length).fill(null);
+  let s = 0;
+  for (let i = 0; i < p && i < arr.length; i++) s += arr[i];
+  if (arr.length < p) return r;
+  r[p - 1] = s / p;
+  for (let i = p; i < arr.length; i++) r[i] = arr[i] * k + r[i - 1] * (1 - k);
+  return r;
+}
+function calcSMA(arr, p) {
+  return arr.map((_, i) => {
+    if (i < p - 1) return null;
+    let s = 0; for (let j = i - p + 1; j <= i; j++) s += arr[j]; return s / p;
+  });
+}
+function calcATR(H, L, C, p) {
+  const tr = C.map((c, i) => i === 0 ? H[i] - L[i] : Math.max(H[i] - L[i], Math.abs(H[i] - C[i - 1]), Math.abs(L[i] - C[i - 1])));
+  const r = new Array(C.length).fill(null);
+  let s = 0; for (let i = 0; i < p; i++) s += tr[i];
+  r[p - 1] = s / p;
+  for (let i = p; i < C.length; i++) r[i] = (r[i - 1] * (p - 1) + tr[i]) / p;
+  return r;
+}
+function calcATRStop(C, atr, mult) {
+  const r = new Array(C.length).fill(null);
+  for (let i = 14; i < C.length; i++) {
+    if (!atr[i]) continue;
+    const b = C[i] - mult * atr[i];
+    r[i] = C[i] > (r[i - 1] || 0) ? Math.max(b, r[i - 1] || b) : b;
+  }
+  return r;
+}
+function calcADX(H, L, C, p) {
+  const n = C.length, dp = new Array(n).fill(0), dm = new Array(n).fill(0), tr = new Array(n).fill(0);
+  for (let i = 1; i < n; i++) {
+    const u = H[i] - H[i - 1], d = L[i - 1] - L[i];
+    dp[i] = u > d && u > 0 ? u : 0; dm[i] = d > u && d > 0 ? d : 0;
+    tr[i] = Math.max(H[i] - L[i], Math.abs(H[i] - C[i - 1]), Math.abs(L[i] - C[i - 1]));
+  }
+  const adx = new Array(n).fill(null), diP = new Array(n).fill(null), diM = new Array(n).fill(null);
+  let sDp = 0, sDm = 0, sTr = 0;
+  for (let i = 1; i <= p && i < n; i++) { sDp += dp[i]; sDm += dm[i]; sTr += tr[i]; }
+  const dxArr = [];
+  for (let i = p + 1; i < n; i++) {
+    sTr = sTr - sTr / p + tr[i]; sDp = sDp - sDp / p + dp[i]; sDm = sDm - sDm / p + dm[i];
+    diP[i] = sTr > 0 ? sDp / sTr * 100 : 0; diM[i] = sTr > 0 ? sDm / sTr * 100 : 0;
+    const sum = diP[i] + diM[i], dx = sum > 0 ? Math.abs(diP[i] - diM[i]) / sum * 100 : 0;
+    dxArr.push(dx);
+    if (dxArr.length >= p) adx[i] = dxArr.length === p ? dxArr.reduce((a, b) => a + b, 0) / p : (adx[i - 1] * (p - 1) + dx) / p;
+  }
+  return { adx, diP, diM };
+}
+function sl(arr, n = 130) { return arr.slice(Math.max(0, arr.length - n)); }
+function cv(v, d = 2) { return v !== null && v !== undefined && !isNaN(v) ? parseFloat(v.toFixed(d)) : null; }
+function fmt(v, d = 2) { return v !== null && !isNaN(v) ? v.toFixed(d) : '—'; }
+function pct(a, b) { return b ? ((a - b) / b * 100).toFixed(2) : '—'; }
+
+// ── LOAD DATA
+async function go() {
+  const tk = document.getElementById('tk').value.trim().toUpperCase();
+  const tf = document.getElementById('tf').value;
+  if (!tk) return;
+  const btn = document.getElementById('loadBtn');
+  btn.disabled = true; btn.textContent = '...';
+  document.getElementById('msgBox').style.display = 'block';
+  document.getElementById('msgBox').innerHTML = '<span class="spinner"></span>A carregar ' + tk + '...';
+  document.getElementById('statusBar').style.display = 'none';
+  document.getElementById('pxDisplay').textContent = '';
+  try {
+    const iv = tf === 'D' ? '1d' : tf === 'W' ? '1wk' : tf + 'm';
+    const rg = tf === 'D' ? '1y' : tf === 'W' ? '5y' : '2d';
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${tk}?interval=${iv}&range=${rg}&includePrePost=false&corsDomain=finance.yahoo.com`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Ticker não encontrado: ' + tk + ' (verifica o sufixo)');
+    const j = await res.json();
+    const r = j.chart && j.chart.result && j.chart.result[0];
+    if (!r || !r.timestamp || !r.indicators || !r.indicators.quote[0]) throw new Error('Sem dados para ' + tk);
+    const ts = r.timestamp, q = r.indicators.quote[0];
+    const rawC = q.close, rawH = q.high, rawL = q.low, rawO = q.open, rawV = q.volume;
+    // Clean nulls
+    const C = rawC.map((c, i) => c ?? rawC[i - 1] ?? 0);
+    const H = rawH.map((h, i) => h ?? rawH[i - 1] ?? C[i]);
+    const L = rawL.map((l, i) => l ?? rawL[i - 1] ?? C[i]);
+    const O = (rawO || C).map((o, i) => o ?? C[i]);
+    const V = rawV.map(v => v ?? 0);
+    const lbl = ts.map(t => {
+      const d = new Date(t * 1000);
+      return tf === 'D' ? d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }) :
+             tf === 'W' ? d.toLocaleDateString('pt-PT', { month: '2-digit', year: '2-digit' }) :
+             d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+    });
+    const e9 = calcEMA(C, 9), e21 = calcEMA(C, 21), e50 = calcEMA(C, 50);
+    const s30 = calcSMA(C, 30), atr = calcATR(H, L, C, 14), atrS = calcATRStop(C, atr, 2.5);
+    const { adx, diP, diM } = calcADX(H, L, C, 14);
+    const vAvg = calcSMA(V, 20);
+    D = { lbl, C, H, L, O, V, vAvg, e9, e21, e50, s30, atr, atrS, adx, diP, diM, tk };
+    render(D); updateStatusBar(D); updateSidebar(D);
+    document.getElementById('msgBox').style.display = 'none';
+    document.getElementById('statusBar').style.display = 'flex';
+    const last = C[C.length - 1], prev = C[C.length - 2];
+    const chg = ((last - prev) / prev * 100).toFixed(2);
+    const chgCol = chg >= 0 ? '#00d68f' : '#ff4560';
+    document.getElementById('pxDisplay').innerHTML =
+      `<span style="color:#d8e6f0">${tk}</span>&nbsp;<span style="color:#00d68f">${last.toFixed(2)}</span>&nbsp;<span style="color:${chgCol};font-size:11px">${chg >= 0 ? '+' : ''}${chg}%</span>`;
+  } catch (e) {
+    document.getElementById('msgBox').innerHTML = '<span style="color:#ff4560">⚠ ' + e.message + '</span>';
+  }
+  btn.disabled = false; btn.textContent = '▶ CARREGAR';
+}
+
+// ── RENDER CHARTS
+function render(d) {
+  const C = sl(d.C), H = sl(d.H), L = sl(d.L), O = sl(d.O);
+  const lbl = sl(d.lbl), V = sl(d.V), vA = sl(d.vAvg);
+  const e9 = sl(d.e9), e21 = sl(d.e21), e50 = sl(d.e50), aS = sl(d.atrS);
+  const adxA = sl(d.adx), diPA = sl(d.diP), diMA = sl(d.diM);
+  const mn = Math.min(...L.filter(Boolean)) * 0.992, mx = Math.max(...H.filter(Boolean)) * 1.008;
+
+  const pDs = [
+    { label: 'Close', data: C, borderColor: '#4dabf7', borderWidth: 1.5, pointRadius: 0, tension: 0, fill: false, order: 5 },
+    vis.e9  ? { label: 'EMA9',    data: e9,  borderColor: '#9c6bff', borderWidth: 1,   pointRadius: 0, tension: 0, fill: false, order: 4 } : null,
+    vis.e21 ? { label: 'EMA21',   data: e21, borderColor: '#ffb800', borderWidth: 1,   pointRadius: 0, tension: 0, fill: false, order: 3 } : null,
+    vis.e50 ? { label: 'EMA50',   data: e50, borderColor: '#00d68f', borderWidth: 1.5, pointRadius: 0, tension: 0, fill: false, order: 2 } : null,
+    vis.atr ? { label: 'ATR Stop',data: aS,  borderColor: '#ff4560', borderWidth: 1,   pointRadius: 0, tension: 0, fill: false, order: 1, borderDash: [5, 3] } : null,
+  ].filter(Boolean);
+
+  const gridC = 'rgba(24,32,48,0.6)', tickC = '#445e78';
+  const baseOpt = { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } };
+
+  if (cP) cP.destroy();
+  cP = new Chart(document.getElementById('cP'), {
+    type: 'line', data: { labels: lbl, datasets: pDs },
+    options: { ...baseOpt, scales: {
+      x: { ticks: { color: tickC, maxTicksLimit: 10, font: { size: 9 } }, grid: { color: gridC, lineWidth: 0.5 } },
+      y: { position: 'right', min: mn, max: mx, ticks: { color: tickC, font: { size: 9 } }, grid: { color: gridC, lineWidth: 0.5 } }
+    }}
+  });
+
+  const vC = V.map((v, i) => C[i] >= (O[i] || C[i]) ? 'rgba(0,214,143,0.75)' : 'rgba(255,69,96,0.7)');
+  if (cV) cV.destroy();
+  cV = new Chart(document.getElementById('cV'), {
+    type: 'bar', data: { labels: lbl, datasets: [
+      { label: 'Volume', data: V, backgroundColor: vC, borderWidth: 0, order: 2 },
+      { label: 'Avg20',  data: vA, type: 'line', borderColor: '#ffb800', borderWidth: 1, pointRadius: 0, tension: 0, fill: false, order: 1 }
+    ]},
+    options: { ...baseOpt, scales: {
+      x: { ticks: { display: false }, grid: { display: false } },
+      y: { position: 'right', ticks: { color: tickC, font: { size: 9 }, maxTicksLimit: 3, callback: v => v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(0) + 'K' : v }, grid: { color: gridC, lineWidth: 0.5 } }
+    }}
+  });
+
+  if (cA) cA.destroy();
+  cA = new Chart(document.getElementById('cA'), {
+    type: 'line', data: { labels: lbl, datasets: [
+      { label: 'ADX', data: adxA, borderColor: '#9c6bff', borderWidth: 1.5, pointRadius: 0, tension: 0, fill: false },
+      { label: '+DI', data: diPA, borderColor: '#00d68f', borderWidth: 1,   pointRadius: 0, tension: 0, fill: false },
+      { label: '-DI', data: diMA, borderColor: '#ff4560', borderWidth: 1,   pointRadius: 0, tension: 0, fill: false },
+    ]},
+    options: { ...baseOpt, scales: {
+      x: { ticks: { display: false }, grid: { display: false } },
+      y: { position: 'right', min: 0, max: 65, ticks: { color: tickC, font: { size: 9 }, maxTicksLimit: 4 }, grid: { color: gridC, lineWidth: 0.5 } }
+    }}
+  });
+
+  const av = adxA[adxA.length - 1], vR = vA[vA.length - 1] ? V[V.length - 1] / vA[vA.length - 1] : 0;
+  document.getElementById('ciA').textContent = av ? `ADX: ${av.toFixed(1)} | +DI: ${(diPA[diPA.length-1]||0).toFixed(1)} | -DI: ${(diMA[diMA.length-1]||0).toFixed(1)}` : '';
+  document.getElementById('ciV').textContent = vR ? `Vol Ratio: ${vR.toFixed(2)}x` : '';
+  document.getElementById('ciP').textContent = `Último: ${fmt(C[C.length - 1])}`;
+}
+
+// ── STATUS BAR
+function updateStatusBar(d) {
+  const n = d.C.length - 1, c = d.C[n];
+  const s30 = d.s30[n], s30p = d.s30[Math.max(0, n - 5)];
+  const e50 = d.e50[n], e9 = d.e9[n], e21 = d.e21[n];
+  const atr = d.atr[n], adxV = d.adx[n];
+  const vL = d.V[n], vA = d.vAvg[n], vR = vA ? (vL / vA).toFixed(2) : '—';
+  const s30r = s30 > s30p, g1 = c > s30 && s30r && c > e50, s2 = c > s30 && s30r;
+  document.getElementById('dS').style.background = s2 ? '#00d68f' : '#ff4560';
+  document.getElementById('lS').textContent = s2 ? 'STAGE 2' : 'STAGE 4';
+  document.getElementById('lS').style.color = s2 ? '#00d68f' : '#ff4560';
+  document.getElementById('dG1').style.background = g1 ? '#00d68f' : '#ff4560';
+  document.getElementById('lG1').textContent = 'G1 ' + (g1 ? 'PASS' : 'FAIL');
+  document.getElementById('lG1').style.color = g1 ? '#00d68f' : '#ff4560';
+  document.getElementById('lADX').textContent = adxV ? adxV.toFixed(1) : '—';
+  document.getElementById('lADX').className = adxV >= 25 ? 'grn' : adxV >= 15 ? 'yel' : 'red';
+  document.getElementById('lATR').textContent = atr ? (atr / c * 100).toFixed(2) + '%' : '—';
+  document.getElementById('lVOL').textContent = vR + 'x';
+  document.getElementById('lE9').textContent = e9 ? e9.toFixed(2) : '—';
+  document.getElementById('lE21').textContent = e21 ? e21.toFixed(2) : '—';
+  document.getElementById('lE50').textContent = e50 ? e50.toFixed(2) : '—';
+}
+
+// ── SIDEBAR
+function updateSidebar(d) {
+  const n = d.C.length - 1, c = d.C[n];
+  const e9 = d.e9[n], e21 = d.e21[n], e50 = d.e50[n];
+  const s30 = d.s30[n], s30p = d.s30[Math.max(0, n - 5)];
+  const atr = d.atr[n], atrS = d.atrS[n];
+  const adxV = d.adx[n], diPv = d.diP[n], diMv = d.diM[n];
+  const vL = d.V[n], vA = d.vAvg[n], vR = vA ? (vL / vA).toFixed(2) : '1.00';
+  const h52 = Math.max(...d.H.slice(Math.max(0, n - 252)));
+  const dist = ((h52 - c) / h52 * 100).toFixed(2);
+  const s30r = s30 > s30p, slope = s30p ? ((s30 - s30p) / s30p * 100).toFixed(2) : '0';
+  const g1 = c > s30 && s30r && c > e50;
+  // Score parcial
+  const q1 = g1 ? 10 : s30r ? 5 : 0;
+  const q5 = parseFloat(dist) <= 8 ? 10 : parseFloat(dist) <= 15 ? 8 : parseFloat(dist) <= 25 ? 5 : parseFloat(dist) <= 35 ? 2 : 0;
+  const q7 = parseFloat(slope) > 1 ? 5 : parseFloat(slope) > 0.5 ? 4 : parseFloat(slope) > 0.2 ? 2 : 0;
+  const tot = q1 + q5 + q7;
+  const gc = tot >= 25 ? '#00d68f' : tot >= 15 ? '#ffb800' : '#ff4560';
+
+  const q1c = q1 >= 10 ? 'grn' : q1 >= 5 ? 'yel' : 'red';
+  const q5c = q5 >= 8 ? 'grn' : q5 >= 5 ? 'yel' : 'red';
+  const q7c = q7 >= 4 ? 'grn' : q7 >= 2 ? 'yel' : 'red';
+  const vRc = parseFloat(vR) >= 1.5 ? 'grn' : 'wht';
+
+  // Prompt para análise SEV4
+  const prmpt = encodeURIComponent(`Analisa ${d.tk} com SEV4. Dados calculados: Close=${c.toFixed(2)}, EMA9=${e9?e9.toFixed(2):'?'}, EMA21=${e21?e21.toFixed(2):'?'}, EMA50=${e50?e50.toFixed(2):'?'}, SMA30W=${s30?s30.toFixed(2):'?'} (slope ${slope}%/5sem), ATR14=${atr?atr.toFixed(2):'?'} (${atr?(atr/c*100).toFixed(2):'?'}%), ATR Stop=${atrS?atrS.toFixed(2):'?'}, ADX=${adxV?adxV.toFixed(1):'?'}, +DI=${diPv?diPv.toFixed(1):'?'}, -DI=${diMv?diMv.toFixed(1):'?'}, Dist52W=-${dist}%, VolRatio=${vR}x. Preciso que me peças o RS Local e Global e o tipo de setup para completar a análise SEV4.`);
+
+  document.getElementById('sScore').innerHTML = `
+    <div class="ptitle">SEV4 Score — ${d.tk}</div>
+    <div class="qrow"><span class="slbl">Q1 Trend</span><span class="${q1c} bold">${q1}/15</span></div>
+    <div class="qrow"><span class="slbl">Q2 RS</span><span class="yel">—/15 *manual</span></div>
+    <div class="qrow"><span class="slbl">Q3 Setup</span><span class="yel">—/20 *manual</span></div>
+    <div class="qrow"><span class="slbl">Q4 Volume</span><span class="${vRc}">${vR}x avg20</span></div>
+    <div class="qrow"><span class="slbl">Q5 ATH</span><span class="${q5c} bold">${q5}/10</span></div>
+    <div class="qrow"><span class="slbl">Q6 Struct</span><span class="yel">—/10 *manual</span></div>
+    <div class="qrow"><span class="slbl">Q7 Force</span><span class="${q7c} bold">${q7}/5</span></div>
+    <div class="qrow"><span class="slbl">Q8 Exec</span><span class="yel">—/10 *manual</span></div>
+    <div style="text-align:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--brd)">
+      <div style="color:var(--lbl);font-size:10px">Auto-calculável</div>
+      <div class="score-big" style="color:${gc}">${tot}<span style="color:var(--lbl);font-size:13px">/100*</span></div>
+      <div class="score-sub">* RS + Setup + Exec = manual</div>
+    </div>
+    <a href="https://claude.ai" target="_blank">
+      <button class="abtn">ANALISAR COM SEV4 (Claude) ↗</button>
+    </a>
+  `;
+
+  document.getElementById('sGates').style.display = 'block';
+  document.getElementById('gatesContent').innerHTML = `
+    <div class="srow"><span class="slbl">G1 Estrutural</span><span class="gbadge ${g1?'pass':'fail'}">${g1?'PASS ✓':'FAIL ✗'}</span></div>
+    <div class="srow"><span class="slbl">SMA30W</span><span class="${s30r?'grn':'red'}">${fmt(s30)} ${s30r?'↑':'↓'}</span></div>
+    <div class="srow"><span class="slbl">Slope/5W</span><span class="${parseFloat(slope)>0.5?'grn':'yel'}">${slope}%</span></div>
+    <div class="srow"><span class="slbl">vs SMA30W</span><span class="${c>s30?'grn':'red'}">${s30?pct(c,s30)+'%':'—'}</span></div>
+    <div class="srow"><span class="slbl">EMA50</span><span class="${c>e50?'grn':'red'}">${fmt(e50)}</span></div>
+    <div class="srow" style="margin-top:4px"><span class="slbl">G2 RS</span><span class="gbadge warn">— Manual</span></div>
+    <div class="srow"><span class="slbl">G3 Liquidez</span><span class="gbadge warn">— Verificar</span></div>
+  `;
+
+  document.getElementById('sMetrics').style.display = 'block';
+  document.getElementById('metricsContent').innerHTML = `
+    <div class="srow"><span class="slbl">EMA9</span><span class="${c>e9?'grn':'red'}">${fmt(e9)}</span></div>
+    <div class="srow"><span class="slbl">EMA21</span><span class="${c>e21?'grn':'red'}">${fmt(e21)}</span></div>
+    <div class="srow"><span class="slbl">EMA50</span><span class="${c>e50?'grn':'red'}">${fmt(e50)}</span></div>
+    <div class="srow"><span class="slbl">ATR(14)</span><span class="yel">${fmt(atr)} (${atr?(atr/c*100).toFixed(2):'—'}%)</span></div>
+    <div class="srow"><span class="slbl">ATR Stop ×2.5</span><span class="red">${fmt(atrS)}</span></div>
+    <div class="srow"><span class="slbl">ADX(14)</span><span class="${adxV>=25?'grn':adxV>=15?'yel':'red'} bold">${fmt(adxV,1)}</span></div>
+    <div class="srow"><span class="slbl">+DI</span><span class="grn">${fmt(diPv,1)}</span></div>
+    <div class="srow"><span class="slbl">-DI</span><span class="red">${fmt(diMv,1)}</span></div>
+    <div class="srow"><span class="slbl">52W High</span><span class="wht">${fmt(h52)}</span></div>
+    <div class="srow"><span class="slbl">Dist 52W</span><span class="${parseFloat(dist)<=8?'grn':parseFloat(dist)<=15?'yel':'red'}">-${dist}%</span></div>
+    <div class="srow"><span class="slbl">Vol Ratio</span><span class="${parseFloat(vR)>=1.5?'grn':'wht'}">${vR}x</span></div>
+    <div class="srow"><span class="slbl">Preço vs EMA9</span><span class="${c>e9?'grn':'red'}">${e9?pct(c,e9)+'%':'—'}</span></div>
+    <div class="srow"><span class="slbl">Preço vs EMA50</span><span class="${c>e50?'grn':'red'}">${e50?pct(c,e50)+'%':'—'}</span></div>
+  `;
+}
+
+// Auto-load on Enter
+document.getElementById('tk').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+</script>
+</body>
+</html>
