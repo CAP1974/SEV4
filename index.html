@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEV4 Chart Terminal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg0:#07090e;--bg1:#0c1218;--bg2:#090e14;
+  --brd:#182030;--lbl:#445e78;--hdr:#6e8ba8;
+  --wht:#d8e6f0;--grn:#00d68f;--grn2:#009060;
+  --red:#ff4560;--yel:#ffb800;--blu:#4dabf7;--pur:#9c6bff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg0);color:var(--wht);font-family:'Courier New',monospace;font-size:12px;min-height:100vh}
+
+/* ── HEADER ── */
+#hdr{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg1);border-bottom:1px solid var(--brd);flex-wrap:wrap;position:sticky;top:0;z-index:50}
+.logo{color:var(--grn);font-weight:bold;font-size:14px;letter-spacing:2px;white-space:nowrap}
+.logo span{color:var(--lbl);font-size:9px;display:block;letter-spacing:1px}
+#tk{background:var(--bg0);border:1px solid var(--brd);color:var(--wht);padding:5px 10px;border-radius:4px;font-family:'Courier New',monospace;font-size:13px;width:120px;text-transform:uppercase}
+#tk:focus{outline:none;border-color:var(--grn)}
+#tf{background:var(--bg0);border:1px solid var(--brd);color:var(--wht);padding:5px 8px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px}
+#loadBtn{background:var(--grn);color:var(--bg0);border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-family:'Courier New',monospace;font-size:12px;font-weight:bold;letter-spacing:1px;transition:background .15s}
+#loadBtn:hover{background:var(--grn2)}
+#loadBtn:disabled{background:var(--lbl);cursor:not-allowed}
+#pxd{margin-left:auto;font-size:14px;font-weight:bold;white-space:nowrap}
+
+/* ── OVERLAY TOGGLES (cor própria por linha) ── */
+.tog{background:transparent;border:1.5px solid;padding:3px 10px;border-radius:4px;cursor:pointer;font-family:'Courier New',monospace;font-size:11px;font-weight:bold;transition:all .15s}
+.te9 {color:var(--pur);border-color:var(--pur)}.te9.on {background:var(--pur);color:var(--bg0)}
+.te21{color:var(--yel);border-color:var(--yel)}.te21.on{background:var(--yel);color:var(--bg0)}
+.te50{color:var(--grn);border-color:var(--grn)}.te50.on{background:var(--grn);color:var(--bg0)}
+.tatr{color:var(--red);border-color:var(--red)}.tatr.on{background:var(--red);color:var(--bg0)}
+.ts30{color:var(--yel);border-color:rgba(255,184,0,.4)}.ts30.on{background:rgba(255,184,0,.2);color:var(--yel)}
+
+/* ── WATCHBAR ── */
+#wbar{display:flex;align-items:center;gap:4px;padding:6px 12px;background:var(--bg1);border-bottom:1px solid var(--brd);overflow-x:auto;white-space:nowrap}
+.wl{color:var(--lbl);font-size:10px;letter-spacing:1px;flex-shrink:0}
+.wt{background:var(--bg2);border:1px solid var(--brd);color:var(--hdr);padding:4px 10px;border-radius:3px;cursor:pointer;font-size:11px;font-family:'Courier New',monospace;flex-shrink:0;transition:all .15s}
+.wt:hover{border-color:var(--grn);color:var(--grn)}
+.wt.u{border-color:rgba(77,171,247,.3);color:var(--blu)}.wt.u:hover{border-color:var(--blu);color:var(--wht)}
+.wd{width:1px;height:14px;background:var(--brd);flex-shrink:0;margin:0 4px}
+
+/* ── STATUS BAR ── */
+#sb{display:none;align-items:center;gap:10px;padding:5px 12px;background:var(--bg2);border-bottom:1px solid var(--brd);font-size:11px;flex-wrap:wrap}
+.si{display:flex;align-items:center;gap:4px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+
+/* ── LAYOUT ── */
+#main{display:grid;grid-template-columns:1fr 200px;gap:8px;padding:8px}
+#cc{display:flex;flex-direction:column;gap:5px}
+#sd{display:flex;flex-direction:column;gap:5px}
+
+/* ── CHART PANELS ── */
+.cp{background:var(--bg1);border:1px solid var(--brd);border-radius:6px;padding:8px}
+.cl{font-size:10px;color:var(--lbl);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
+.cv{color:var(--hdr);font-size:11px;text-transform:none;letter-spacing:0}
+#pc{display:block;background:transparent;cursor:crosshair}
+
+/* ── SIDEBAR PANELS ── */
+.sp{background:var(--bg1);border:1px solid var(--brd);border-radius:6px;padding:10px}
+.pt{color:var(--lbl);font-size:9px;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--brd)}
+
+/* DECISÃO */
+#db{border-radius:6px;padding:13px 10px;text-align:center;border:1px solid var(--brd);transition:background .3s,border-color .3s}
+.dt{font-size:14px;font-weight:bold;letter-spacing:1px}
+.ds{font-size:9px;margin-top:3px;opacity:.85}
+
+/* PRESSURE */
+.pb{background:var(--bg2);border-radius:3px;height:5px;margin:5px 0 3px;overflow:hidden}
+.pf{height:5px;border-radius:3px;transition:width .4s,background .3s}
+#psL{font-size:9px;line-height:1.6;white-space:pre;font-family:'Courier New',monospace;margin-top:3px}
+#psM{font-size:10px;font-weight:bold;margin-top:5px}
+
+/* GATES */
+.gr{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:11px;border-bottom:1px solid rgba(24,32,48,.5)}
+.gr:last-child{border:none}
+.gl{color:var(--lbl);font-size:10px}
+.gb{font-size:10px;font-weight:bold;padding:1px 6px;border-radius:3px}
+.gp{background:rgba(0,214,143,.15);color:var(--grn)}
+.gf{background:rgba(255,69,96,.15);color:var(--red)}
+.gw{background:rgba(255,184,0,.1);color:var(--yel)}
+
+/* EXITS */
+.er{display:flex;justify-content:space-between;padding:2px 0;font-size:11px}
+.eo{color:var(--lbl);font-size:10px}
+.ea{color:var(--red);font-weight:bold;font-size:11px;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* METRICAS */
+.mr{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(24,32,48,.4);font-size:11px}
+.mr:last-child{border:none}
+.ml{color:var(--lbl);font-size:10px}
+
+/* DEBUG PANEL */
+#dbg{display:none;background:var(--bg2);border:1px solid var(--brd);border-radius:4px;padding:8px;margin-top:5px;font-size:10px;font-family:'Courier New',monospace;line-height:1.7;color:var(--lbl)}
+#dbg.show{display:block}
+.dbg-val{color:var(--hdr)}
+.dbg-ok{color:var(--grn)}
+.dbg-warn{color:var(--yel)}
+.dbg-fail{color:var(--red)}
+.dbg-btn{background:transparent;border:1px solid var(--brd);color:var(--lbl);padding:2px 8px;border-radius:3px;cursor:pointer;font-family:'Courier New',monospace;font-size:9px;margin-left:6px;transition:all .15s}
+.dbg-btn:hover{border-color:var(--hdr);color:var(--hdr)}
+
+/* MISC */
+.grn{color:var(--grn)}.red{color:var(--red)}.yel{color:var(--yel)}.wht{color:var(--wht)}
+#msg{text-align:center;padding:50px 20px;color:var(--lbl);font-size:13px}
+.spin{display:inline-block;width:16px;height:16px;border:2px solid var(--brd);border-top-color:var(--grn);border-radius:50%;animation:sp .8s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+#footer{text-align:center;padding:8px;color:var(--lbl);font-size:10px;border-top:1px solid var(--brd)}
+@media(max-width:700px){#main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <div class="logo">SEV4<span>CHART TERMINAL v9</span></div>
+  <input id="tk" value="OMV.VI" placeholder="ticker"/>
+  <select id="tf"><option value="D" selected>1D</option><option value="W">1W</option></select>
+  <button id="loadBtn" onclick="go()">▶ CARREGAR</button>
+  <span style="color:var(--lbl);font-size:10px">Overlay:</span>
+  <button class="tog te9 on"  onclick="tv('e9',this)">EMA9</button>
+  <button class="tog te21 on" onclick="tv('e21',this)">EMA21</button>
+  <button class="tog te50 on" onclick="tv('e50',this)">EMA50</button>
+  <button class="tog ts30"    onclick="tv('s30',this)">SMA30W</button>
+  <button class="tog tatr"    onclick="tv('atr',this)">ATR Stop</button>
+  <span id="pxd"></span>
+</div>
+
+<div id="wbar">
+  <span class="wl">EUR:</span>
+  <span class="wt" onclick="ld('DOFG.OL','DOF')">DOF</span>
+  <span class="wt" onclick="ld('ERIC-B.ST','ERICSSON')">ERICSSON</span>
+  <span class="wt" onclick="ld('NDX1.DE','NORDEX')">NORDEX</span>
+  <span class="wt" onclick="ld('OMV.VI','OMV')">OMV</span>
+  <span class="wt" onclick="ld('PRY.MI','PRYSMIAN')">PRYSMIAN</span>
+  <span class="wt" onclick="ld('SPM.MI','SAIPEM')">SAIPEM</span>
+  <span class="wt" onclick="ld('005930.KS','SAMSUNG')">SAMSUNG</span>
+  <div class="wd"></div>
+  <span class="wl">USD:</span>
+  <span class="wt u" onclick="ld('CASY','CASEY\'S')">CASEY'S</span>
+  <span class="wt u" onclick="ld('EQIX','EQUINIX')">EQUINIX</span>
+  <span class="wt u" onclick="ld('ERAS','ERASCA')">ERASCA</span>
+  <span class="wt u" onclick="ld('KGS','KODIAK GAS')">KODIAK GAS</span>
+  <span class="wt u" onclick="ld('MU','MICRON')">MICRON</span>
+  <span class="wt u" onclick="ld('SNDK','SANDISK')">SANDISK</span>
+  <span class="wt u" onclick="ld('SDRL','SEADRILL')">SEADRILL</span>
+</div>
+
+<div id="sb">
+  <span class="si"><span class="dot" id="dS" style="background:var(--lbl)"></span><span id="lS" style="color:var(--lbl)">STAGE —</span></span>
+  <span style="color:var(--brd)">|</span>
+  <span class="si"><span class="dot" id="dG" style="background:var(--lbl)"></span><span id="lG" style="color:var(--lbl)">G1 —</span></span>
+  <span style="color:var(--brd)">|</span>
+  <span class="si" style="color:var(--lbl)">SMA20: <span id="sS20">—</span></span>
+  <span class="si" style="color:var(--lbl)">SMA30W: <span id="sSW">—</span></span>
+  <span class="si" style="color:var(--lbl)">Vol: <span id="sVOL">—</span></span>
+  <span class="si" style="color:var(--lbl)">ATR%: <span id="sATR" class="yel">—</span></span>
+  <span class="si" style="color:var(--lbl)">STP: <span id="sSTP" class="red">—</span></span>
+  <span class="si" style="color:var(--lbl)">EMA9: <span id="sE9" style="color:var(--pur)">—</span></span>
+  <span class="si" style="color:var(--lbl)">EMA21: <span id="sE21" style="color:var(--yel)">—</span></span>
+  <span class="si" style="color:var(--lbl)">EMA50: <span id="sE50" style="color:var(--grn)">—</span></span>
+</div>
+
+<div id="main">
+  <div id="cc">
+    <div class="cp" style="height:340px">
+      <div class="cl">CANDLES + EMAs + ATR Stop (2.5×ATR14) <span class="cv" id="ciP"></span></div>
+      <canvas id="pc" width="800" height="300"></canvas>
+    </div>
+    <div class="cp" style="height:115px">
+      <div class="cl">VOLUME <span class="cv" id="ciV"></span></div>
+      <div style="position:relative;height:85px"><canvas id="cV" role="img" aria-label="Volume"></canvas></div>
+    </div>
+    <div class="cp" style="height:115px">
+      <div class="cl">ADX(14) — Força da Tendência <span class="cv" id="ciA"></span></div>
+      <div style="position:relative;height:85px"><canvas id="cA" role="img" aria-label="ADX"></canvas></div>
+    </div>
+    <div id="msg">Clica num ativo da watchlist ↑</div>
+  </div>
+
+  <div id="sd">
+    <!-- DECISÃO -->
+    <div id="db" style="background:var(--bg1)">
+      <div class="dt" id="dTxt" style="color:var(--lbl)">—</div>
+      <div class="ds" id="dSub" style="color:var(--lbl)">carrega um ativo</div>
+    </div>
+
+    <!-- PRESSURE SCORE -->
+    <div class="sp">
+      <div class="pt" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Pressure Score</span>
+        <button class="dbg-btn" onclick="toggleDbg()">DEBUG</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span id="psV" style="font-size:22px;font-weight:bold;color:var(--lbl)">0.0</span>
+        <span style="font-size:10px;color:var(--lbl)">/9.5</span>
+      </div>
+      <div class="pb"><div class="pf" id="psB" style="width:0%;background:var(--lbl)"></div></div>
+      <div id="psL" style="color:var(--lbl)">—</div>
+      <div id="psM" style="color:var(--lbl)">—</div>
+      <!-- DEBUG PANEL -->
+      <div id="dbg">
+        <div style="color:var(--yel);font-size:9px;letter-spacing:1px;margin-bottom:4px">VALORES CALCULADOS</div>
+        <div id="dbgContent">—</div>
+      </div>
+    </div>
+
+    <!-- GATES -->
+    <div class="sp">
+      <div class="pt">Gates</div>
+      <div class="gr"><span class="gl">G1 Estrutural</span><span class="gb gw" id="gG1">—</span></div>
+      <div class="gr"><span class="gl">Stage</span><span id="gSt" style="font-size:10px;color:var(--lbl)">—</span></div>
+      <div class="gr"><span class="gl">SMA30W slope/5W</span><span id="gSl" style="font-size:10px">—</span></div>
+      <div class="gr"><span class="gl">Close vs SMA30W</span><span id="gSW" style="font-size:10px">—</span></div>
+      <div class="gr"><span class="gl">Dist 52W High</span><span id="g52" style="font-size:10px">—</span></div>
+      <div class="gr"><span class="gl">G2 RS</span><span class="gb gw">Manual</span></div>
+    </div>
+
+    <!-- EXITS P1-P4 -->
+    <div class="sp">
+      <div class="pt">Exits P1–P4</div>
+      <div class="er"><span class="gl">P1 Weekly SMA30W</span><span id="eP1" class="eo">ok</span></div>
+      <div class="er"><span class="gl">P2 Lower Low</span><span id="eP2" class="eo">ok</span></div>
+      <div class="er"><span class="gl">P3 Vol Climático</span><span id="eP3" class="eo">ok</span></div>
+      <div class="er"><span class="gl">P4 ATR Trail Stop</span><span id="eP4" class="eo">ok</span></div>
+    </div>
+
+    <!-- METRICAS CHAVE -->
+    <div class="sp">
+      <div class="pt">Métricas chave</div>
+      <div class="mr"><span class="ml">ATR Stop</span><span id="mS" style="color:var(--red);font-weight:bold">—</span></div>
+      <div class="mr"><span class="ml">SMA20 (preço)</span><span id="mS20">—</span></div>
+      <div class="mr"><span class="ml">vs EMA50</span><span id="mE50">—</span></div>
+      <div class="mr"><span class="ml">ADX(14)</span><span id="mADX">—</span></div>
+      <div class="mr"><span class="ml">Vol Ratio</span><span id="mVol">—</span></div>
+      <div class="mr"><span class="ml">ATR% volat.</span><span id="mATRp" class="yel">—</span></div>
+      <div class="mr"><span class="ml">RSI(14)</span><span id="mRSI">—</span></div>
+    </div>
+  </div>
+</div>
+
+<div id="footer">SEV4 Chart Terminal v9 · Fase 1 · 2.5×ATR14 · SEV4 Weinstein+Minervini+O'Neil+Livermore</div>
+
+<script>
+// ════════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ════════════════════════════════════════════════════
+let cV,cA,D=null;
+const vis={e9:true,e21:true,e50:true,s30:false,atr:false};
+
+function tv(k,b){vis[k]=!vis[k];b.classList.toggle('on',vis[k]);if(D)drawP(D)}
+function ld(t,n){document.getElementById('tk').value=t;go(n)}
+function toggleDbg(){document.getElementById('dbg').classList.toggle('show')}
+
+// Formatação
+function f2(v){return (v!=null&&!isNaN(v))?parseFloat(v).toFixed(2):'—'}
+function f1(v){return (v!=null&&!isNaN(v))?parseFloat(v).toFixed(1):'—'}
+function f0(v){return (v!=null&&!isNaN(v))?Math.round(v).toString():'—'}
+function fPct(v){return (v!=null&&!isNaN(v))?((v>=0?'+':'')+v.toFixed(2)+'%'):'—'}
+function sl(a,n=100){return a.slice(Math.max(0,a.length-n))}
+
+// ════════════════════════════════════════════════════
+// INDICADORES — implementações exactas
+// ════════════════════════════════════════════════════
+
+// EMA padrão
+function calcEMA(arr,p){
+  const k=2/(p+1);
+  const r=new Array(arr.length).fill(null);
+  let s=0,cnt=0;
+  for(let i=0;i<arr.length;i++){
+    if(arr[i]==null)continue;
+    s+=arr[i];cnt++;
+    if(cnt===p){r[i]=s/p;break}
+  }
+  let start=-1;
+  for(let i=0;i<r.length;i++){if(r[i]!==null){start=i;break}}
+  if(start<0)return r;
+  for(let i=start+1;i<arr.length;i++){
+    if(arr[i]==null)continue;
+    r[i]=arr[i]*k+r[i-1]*(1-k);
+  }
+  return r;
+}
+
+// SMA exacta
+function calcSMA(arr,p){
+  return arr.map((_,i)=>{
+    if(i<p-1)return null;
+    let s=0,cnt=0;
+    for(let j=i-p+1;j<=i;j++){if(arr[j]!=null){s+=arr[j];cnt++;}}
+    return cnt===p?s/p:null;
+  });
+}
+
+// ATR14 — EMA do True Range (já é exponencial por definição)
+function calcATR14(H,L,C){
+  const n=C.length;
+  const tr=new Array(n).fill(null);
+  for(let i=0;i<n;i++){
+    if(C[i]==null||H[i]==null||L[i]==null)continue;
+    if(i===0){tr[i]=H[i]-L[i];continue;}
+    tr[i]=Math.max(
+      H[i]-L[i],
+      Math.abs(H[i]-C[i-1]),
+      Math.abs(L[i]-C[i-1])
+    );
+  }
+  // Wilder smoothing (equivalente a EMA com alpha=1/14)
+  // Primeira barra: média simples de 14 TRs
+  const r=new Array(n).fill(null);
+  const p=14;
+  let sum=0,cnt=0,start=-1;
+  for(let i=0;i<n;i++){
+    if(tr[i]==null)continue;
+    sum+=tr[i];cnt++;
+    if(cnt===p){r[i]=sum/p;start=i;break;}
+  }
+  if(start<0)return r;
+  // Wilder: ATR[i] = (ATR[i-1]*(p-1) + TR[i]) / p
+  for(let i=start+1;i<n;i++){
+    if(tr[i]==null)continue;
+    const prev=r[i-1]!==null?r[i-1]:r[start];
+    r[i]=(prev*(p-1)+tr[i])/p;
+  }
+  return r;
+}
+
+// ATR Trailing Stop — 2.5×ATR14
+// Regra: stop = close - 2.5*ATR. Stop SÓ SOBE, nunca desce.
+// Quando close < stop → stop reseta para basicStop da barra actual
+function calcATRStop(C,atr,mult=2.5){
+  const r=new Array(C.length).fill(null);
+  for(let i=0;i<C.length;i++){
+    if(C[i]==null||atr[i]==null)continue;
+    const basic=C[i]-mult*atr[i];
+    if(r[i-1]===null){
+      r[i]=basic;
+    } else if(C[i]>r[i-1]){
+      // Preço subiu: stop sobe mas nunca abaixo do basic
+      r[i]=Math.max(basic,r[i-1]);
+    } else {
+      // Preço desceu ou lateral: stop mantém-se (nunca desce)
+      r[i]=r[i-1];
+    }
+  }
+  return r;
+}
+
+// ADX(14) com +DI e -DI
+function calcADX14(H,L,C){
+  const n=C.length,p=14;
+  const dmP=new Array(n).fill(0);
+  const dmM=new Array(n).fill(0);
+  const tr=new Array(n).fill(0);
+  for(let i=1;i<n;i++){
+    if(!H[i]||!L[i]||!C[i])continue;
+    const uMove=H[i]-H[i-1];
+    const dMove=L[i-1]-L[i];
+    dmP[i]=uMove>dMove&&uMove>0?uMove:0;
+    dmM[i]=dMove>uMove&&dMove>0?dMove:0;
+    tr[i]=Math.max(H[i]-L[i],Math.abs(H[i]-C[i-1]),Math.abs(L[i]-C[i-1]));
+  }
+  const adxR=new Array(n).fill(null);
+  const diP=new Array(n).fill(null);
+  const diM=new Array(n).fill(null);
+  // Inicialização Wilder
+  let sDmP=0,sDmM=0,sTr=0;
+  for(let i=1;i<=p&&i<n;i++){sDmP+=dmP[i];sDmM+=dmM[i];sTr+=tr[i];}
+  const dxArr=[];
+  for(let i=p+1;i<n;i++){
+    sTr=sTr-sTr/p+tr[i];
+    sDmP=sDmP-sDmP/p+dmP[i];
+    sDmM=sDmM-sDmM/p+dmM[i];
+    diP[i]=sTr>0?sDmP/sTr*100:0;
+    diM[i]=sTr>0?sDmM/sTr*100:0;
+    const ss=diP[i]+diM[i];
+    const dx=ss>0?Math.abs(diP[i]-diM[i])/ss*100:0;
+    dxArr.push(dx);
+    if(dxArr.length>=p){
+      adxR[i]=dxArr.length===p
+        ?dxArr.reduce((a,b)=>a+b,0)/p
+        :(adxR[i-1]*(p-1)+dx)/p;
+    }
+  }
+  return{adxR,diP,diM};
+}
+
+// RSI(14) — Wilder smoothing
+function calcRSI14(C){
+  const n=C.length,p=14;
+  if(n<p+2)return 50;
+  let gains=0,losses=0;
+  // Primeira média simples
+  for(let i=1;i<=p;i++){
+    const d=C[i]-C[i-1];
+    if(d>0)gains+=d;else losses-=d;
+  }
+  let avgG=gains/p,avgL=losses/p;
+  // Wilder suavização para o resto
+  for(let i=p+1;i<n;i++){
+    const d=C[i]-C[i-1];
+    const g=d>0?d:0;
+    const l=d<0?-d:0;
+    avgG=(avgG*(p-1)+g)/p;
+    avgL=(avgL*(p-1)+l)/p;
+  }
+  if(avgL===0)return 100;
+  return 100-100/(1+avgG/avgL);
+}
+
+// SMA30 semanal aproximada a partir de dados diários
+// Converte close diário para "semanal" agrupando por semana
+function calcSMA30W_fromDaily(timestamps,closes){
+  // Agrupa por semana (segunda-feira)
+  const weeks={};
+  for(let i=0;i<timestamps.length;i++){
+    const d=new Date(timestamps[i]*1000);
+    const day=d.getDay(); // 0=dom, 1=seg...
+    const offset=(day===0?-6:1-day)*86400000;
+    const monday=new Date(d.getTime()+offset);
+    const key=monday.toISOString().slice(0,10);
+    if(!weeks[key])weeks[key]={closes:[],lastIdx:i};
+    weeks[key].closes.push(closes[i]);
+    weeks[key].lastIdx=i;
+  }
+  const weekKeys=Object.keys(weeks).sort();
+  const weekCloses=weekKeys.map(k=>weeks[k].closes[weeks[k].closes.length-1]);
+  const weekLastIdx=weekKeys.map(k=>weeks[k].lastIdx);
+  // SMA30 sobre os fechos semanais
+  const weekSMA30=calcSMA(weekCloses,30);
+  // Expande de volta para dimensão diária
+  const result=new Array(closes.length).fill(null);
+  for(let w=0;w<weekKeys.length;w++){
+    const wIdx=weekLastIdx[w];
+    const val=weekSMA30[w];
+    if(val===null)continue;
+    // Preenche todos os dias desta semana
+    const startDay=w>0?weekLastIdx[w-1]+1:0;
+    for(let d=startDay;d<=wIdx;d++){
+      result[d]=val;
+    }
+  }
+  return result;
+}
+
+// ════════════════════════════════════════════════════
+// FETCH — 3 proxies fallback
+// ════════════════════════════════════════════════════
+async function fetchY(tk,iv,rg){
+  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${tk}?interval=${iv}&range=${rg}&includePrePost=false`;
+  const srcs=[
+    ()=>fetch(url,{signal:AbortSignal.timeout(7000)}),
+    ()=>fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,{signal:AbortSignal.timeout(10000)})
+         .then(async r=>{const j=await r.json();return{ok:true,json:()=>JSON.parse(j.contents)}}),
+    ()=>fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`,{signal:AbortSignal.timeout(10000)})
+  ];
+  for(const s of srcs){
+    try{const r=await s();if(r.ok){const j=await r.json();if(j.chart?.result?.[0])return j;}}catch(e){}
+  }
+  throw new Error('Não foi possível carregar '+tk+'. Verifica o sufixo.');
+}
+
+// ════════════════════════════════════════════════════
+// CARREGAR DADOS
+// ════════════════════════════════════════════════════
+async function go(nm){
+  const tk=document.getElementById('tk').value.trim().toUpperCase();
+  const tf=document.getElementById('tf').value;
+  if(!tk)return;
+  const btn=document.getElementById('loadBtn');
+  btn.disabled=true;btn.textContent='...';
+  document.getElementById('msg').style.display='block';
+  document.getElementById('msg').innerHTML='<span class="spin"></span>A carregar '+(nm||tk)+'...';
+  document.getElementById('sb').style.display='none';
+  document.getElementById('pxd').textContent='';
+
+  try{
+    const iv=tf==='D'?'1d':'1wk';
+    const rg=tf==='D'?'1y':'5y';
+    const j=await fetchY(tk,iv,rg);
+    const r=j.chart.result[0];
+    if(!r?.timestamp?.length)throw new Error('Sem dados para '+tk);
+    const q=r.indicators.quote[0];
+    const n=r.timestamp.length;
+    const ts=[],C=[],H=[],L=[],O=[],V=[];
+    for(let i=0;i<n;i++){
+      ts.push(r.timestamp[i]);
+      C.push(q.close[i]??C[C.length-1]??0);
+      H.push(q.high[i]??H[H.length-1]??0);
+      L.push(q.low[i]??L[L.length-1]??0);
+      O.push(q.open?.[i]??C[i]);
+      V.push(q.volume[i]??0);
+    }
+    const lbl=ts.map(t=>{
+      const d=new Date(t*1000);
+      return tf==='D'
+        ?d.toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'})
+        :d.toLocaleDateString('pt-PT',{month:'2-digit',year:'2-digit'});
+    });
+
+    // ── Calcular todos os indicadores
+    const e9a=calcEMA(C,9);
+    const e21a=calcEMA(C,21);
+    const e50a=calcEMA(C,50);
+    const s20a=calcSMA(C,20);  // SMA20 REAL para Pressure Score
+    const atrA=calcATR14(H,L,C);
+    const atrSA=calcATRStop(C,atrA,2.5);
+    const {adxR,diP,diM}=calcADX14(H,L,C);
+    const vAvg=calcSMA(V,20);
+
+    // SMA30W: calculada a partir de dados diários (proxy semanal)
+    const s30a=calcSMA30W_fromDaily(ts,C);
+
+    const name=nm||tk;
+    D={lbl,ts,C,H,L,O,V,vAvg,e9a,e21a,e50a,s20a,s30a,atrA,atrSA,adxR,diP,diM,tk,name};
+
+    drawP(D);
+    drawVA(D);
+    updateSB(D);
+    sidebar(D);
+
+    document.getElementById('msg').style.display='none';
+    document.getElementById('sb').style.display='flex';
+
+    const last=C[C.length-1];
+    const prev=C[C.length-2]||last;
+    const chg=((last-prev)/prev*100).toFixed(2);
+    const cc=+chg>=0?'var(--grn)':'var(--red)';
+    document.getElementById('pxd').innerHTML=
+      `<span style="color:var(--wht)">${name}</span>&nbsp;`+
+      `<span style="color:var(--grn)">${f2(last)}</span>&nbsp;`+
+      `<span style="color:${cc};font-size:11px">${+chg>=0?'+':''}${chg}%</span>`;
+  }catch(e){
+    document.getElementById('msg').innerHTML=`<span style="color:var(--red)">⚠ ${e.message}</span>`;
+  }
+  btn.disabled=false;btn.textContent='▶ CARREGAR';
+}
+
+// ════════════════════════════════════════════════════
+// GRÁFICO DE PREÇO — canvas manual
+// ════════════════════════════════════════════════════
+function drawP(d){
+  const NB=100;
+  const C=sl(d.C,NB),H=sl(d.H,NB),L=sl(d.L,NB),O=sl(d.O,NB);
+  const e9=sl(d.e9a,NB),e21=sl(d.e21a,NB),e50=sl(d.e50a,NB);
+  const s30=sl(d.s30a,NB),aS=sl(d.atrSA,NB),lb=sl(d.lbl,NB);
+  const n=C.length;
+
+  const cv=document.getElementById('pc');
+  const W=cv.parentElement.clientWidth-16;
+  const HP=300;
+  cv.width=W;cv.height=HP;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,W,HP);
+
+  // Range
+  const allLows=L.filter(Boolean);
+  const allHighs=H.filter(Boolean);
+  if(!allLows.length||!allHighs.length)return;
+  const pMin=Math.min(...allLows);
+  const pMax=Math.max(...allHighs);
+  const pad=(pMax-pMin)*0.06;
+  const lo=pMin-pad,hi=pMax+pad;
+
+  const mL=4,mR=60,mT=6,mB=20;
+  const pW=W-mL-mR,pH=HP-mT-mB;
+  const tx=i=>mL+(i+0.5)*(pW/n);
+  const ty=v=>v==null?null:mT+pH-((v-lo)/(hi-lo))*pH;
+
+  // Grid horizontal
+  ctx.strokeStyle='rgba(24,32,48,.8)';ctx.lineWidth=.5;
+  for(let i=0;i<=5;i++){
+    const y=mT+(pH/5)*i;
+    ctx.beginPath();ctx.moveTo(mL,y);ctx.lineTo(W-mR,y);ctx.stroke();
+    const val=hi-(hi-lo)/5*i;
+    ctx.fillStyle='#445e78';ctx.font='9px Courier New';ctx.textAlign='left';
+    ctx.fillText(val.toFixed(2),W-mR+3,y+3);
+  }
+
+  // Labels eixo X
+  ctx.fillStyle='#445e78';ctx.font='9px Courier New';ctx.textAlign='center';
+  const step=Math.ceil(n/8);
+  for(let i=0;i<n;i+=step)ctx.fillText(lb[i]||'',tx(i),HP-4);
+
+  // Linha de fundo: SMA30W (cor especial — linha da semana)
+  if(vis.s30){
+    function drawLine(arr,col,w,dash=[]){
+      ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=w;ctx.setLineDash(dash);
+      let st=false;
+      for(let i=0;i<n;i++){
+        const y=ty(arr[i]);
+        if(y==null){st=false;continue;}
+        if(!st){ctx.moveTo(tx(i),y);st=true;}else ctx.lineTo(tx(i),y);
+      }
+      ctx.stroke();ctx.setLineDash([]);
+    }
+    drawLine(s30,'rgba(255,184,0,.7)',2,[]);
+  }
+
+  // ATR Stop (tracejado vermelho — abaixo das velas)
+  if(vis.atr){
+    ctx.beginPath();ctx.strokeStyle='rgba(255,69,96,.55)';ctx.lineWidth=1;ctx.setLineDash([5,3]);
+    let st=false;
+    for(let i=0;i<n;i++){
+      const y=ty(aS[i]);
+      if(y==null){st=false;continue;}
+      if(!st){ctx.moveTo(tx(i),y);st=true;}else ctx.lineTo(tx(i),y);
+    }
+    ctx.stroke();ctx.setLineDash([]);
+  }
+
+  // Velas japonesas
+  const bW=Math.max(2,Math.min(12,pW/n*.72));
+  for(let i=0;i<n;i++){
+    if(!C[i])continue;
+    const x=tx(i);
+    const oY=ty(O[i]),cY=ty(C[i]),hY=ty(H[i]),lY=ty(L[i]);
+    const bull=C[i]>=O[i];
+    // Wick
+    ctx.beginPath();
+    ctx.strokeStyle=bull?'#007040':'#aa2030';
+    ctx.lineWidth=1;
+    ctx.moveTo(x,hY);ctx.lineTo(x,lY);
+    ctx.stroke();
+    // Body
+    const top=Math.min(oY,cY);
+    const bH=Math.max(1,Math.abs(cY-oY));
+    ctx.fillStyle=bull?'#00d68f':'#ff4560';
+    ctx.fillRect(x-bW/2,top,bW,bH);
+    if(bH>2){
+      ctx.strokeStyle=bull?'#009060':'#cc2040';
+      ctx.lineWidth=.5;
+      ctx.strokeRect(x-bW/2,top,bW,bH);
+    }
+  }
+
+  // EMAs sobre as velas
+  function drawEMA(arr,col,w){
+    ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=w;
+    let st=false;
+    for(let i=0;i<n;i++){
+      const y=ty(arr[i]);
+      if(y==null){st=false;continue;}
+      if(!st){ctx.moveTo(tx(i),y);st=true;}else ctx.lineTo(tx(i),y);
+    }
+    ctx.stroke();
+  }
+  if(vis.e9) drawEMA(e9, '#9c6bff',1);
+  if(vis.e21)drawEMA(e21,'#ffb800',1);
+  if(vis.e50)drawEMA(e50,'#00d68f',1.5);
+
+  // Linha de preço actual
+  const lc=C[C.length-1];
+  if(lc){
+    const y=ty(lc);
+    ctx.beginPath();ctx.strokeStyle='rgba(77,171,247,.35)';ctx.lineWidth=.5;ctx.setLineDash([3,3]);
+    ctx.moveTo(mL,y);ctx.lineTo(W-mR,y);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#4dabf7';ctx.font='bold 10px Courier New';ctx.textAlign='left';
+    ctx.fillText(lc.toFixed(2),W-mR+3,y-2);
+  }
+
+  // Label ATR Stop
+  if(vis.atr){
+    const la=aS[aS.length-1];
+    if(la){
+      const y=ty(la);
+      ctx.fillStyle='rgba(255,69,96,.75)';ctx.font='9px Courier New';ctx.textAlign='left';
+      ctx.fillText('STP '+la.toFixed(2),W-mR+3,y+10);
+    }
+  }
+
+  document.getElementById('ciP').textContent='Último: '+f2(lc);
+}
+
+// ════════════════════════════════════════════════════
+// VOLUME + ADX
+// ════════════════════════════════════════════════════
+function drawVA(d){
+  const NB=100;
+  const lb=sl(d.lbl,NB),V=sl(d.V,NB),vA=sl(d.vAvg,NB);
+  const C=sl(d.C,NB),O=sl(d.O,NB);
+  const adxA=sl(d.adxR,NB),diPA=sl(d.diP,NB),diMA=sl(d.diM,NB);
+  const gC='rgba(24,32,48,.6)',tC='#445e78';
+  const base={
+    responsive:true,maintainAspectRatio:false,animation:false,
+    plugins:{legend:{display:false},tooltip:{enabled:false}}
+  };
+  const vC=V.map((v,i)=>C[i]>=(O[i]||C[i])?'rgba(0,214,143,.75)':'rgba(255,69,96,.7)');
+
+  if(cV)cV.destroy();
+  cV=new Chart(document.getElementById('cV'),{
+    type:'bar',
+    data:{labels:lb,datasets:[
+      {data:V,backgroundColor:vC,borderWidth:0,order:2},
+      {data:vA,type:'line',borderColor:'#ffb800',borderWidth:1,pointRadius:0,tension:0,fill:false,order:1}
+    ]},
+    options:{...base,scales:{
+      x:{ticks:{display:false},grid:{display:false}},
+      y:{position:'right',ticks:{color:tC,font:{size:9},maxTicksLimit:3,
+           callback:v=>v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v},
+         grid:{color:gC,lineWidth:.5}}
+    }}
+  });
+
+  if(cA)cA.destroy();
+  cA=new Chart(document.getElementById('cA'),{
+    type:'line',
+    data:{labels:lb,datasets:[
+      {data:adxA,borderColor:'#9c6bff',borderWidth:1.5,pointRadius:0,tension:0,fill:false},
+      {data:diPA,borderColor:'#00d68f',borderWidth:1,  pointRadius:0,tension:0,fill:false},
+      {data:diMA,borderColor:'#ff4560',borderWidth:1,  pointRadius:0,tension:0,fill:false}
+    ]},
+    options:{...base,scales:{
+      x:{ticks:{display:false},grid:{display:false}},
+      y:{position:'right',min:0,max:65,ticks:{color:tC,font:{size:9},maxTicksLimit:4},grid:{color:gC,lineWidth:.5}}
+    }}
+  });
+
+  const av=adxA[adxA.length-1];
+  const vLast=V[V.length-1],vAvLast=vA[vA.length-1];
+  const vR=vAvLast>0?vLast/vAvLast:0;
+  document.getElementById('ciA').textContent=av
+    ?`ADX:${f1(av)}  +DI:${f1(diPA[diPA.length-1])}  -DI:${f1(diMA[diMA.length-1])}`:'';
+  document.getElementById('ciV').textContent=vR?`Vol Ratio: ${vR.toFixed(2)}x`:'';
+}
+
+// ════════════════════════════════════════════════════
+// STATUS BAR
+// ════════════════════════════════════════════════════
+function updateSB(d){
+  const n=d.C.length-1,c=d.C[n];
+  const s30=d.s30a[n]||0;
+  const s30p=d.s30a[Math.max(0,n-5)]||0;
+  const s20=d.s20a[n]||0;
+  const e50=d.e50a[n]||0,e9=d.e9a[n]||0,e21=d.e21a[n]||0;
+  const atr=d.atrA[n]||0,atrS=d.atrSA[n]||0;
+  const vL=d.V[n]||0,vAv=d.vAvg[n]||1;
+  const vR=vAv>0?vL/vAv:0;
+  const s30r=s30>s30p;
+  const g1=c>s30&&s30r&&c>e50;
+  const s2=c>s30&&s30r;
+
+  document.getElementById('dS').style.background=s2?'#00d68f':'#ff4560';
+  document.getElementById('lS').style.color=s2?'#00d68f':'#ff4560';
+  document.getElementById('lS').textContent=s2?'STAGE 2':'STAGE 4';
+
+  document.getElementById('dG').style.background=g1?'#00d68f':'#ff4560';
+  document.getElementById('lG').style.color=g1?'#00d68f':'#ff4560';
+  document.getElementById('lG').textContent='G1 '+(g1?'PASS':'FAIL');
+
+  const s20pct=s20>0?(c-s20)/s20*100:0;
+  const s20el=document.getElementById('sS20');
+  s20el.textContent=f2(s20)+(s20pct>=0?' +':' ')+s20pct.toFixed(1)+'%';
+  s20el.style.color=c>s20?'#00d68f':'#ff4560';
+
+  const sWel=document.getElementById('sSW');
+  sWel.textContent=f2(s30)+(s30r?' ↑':' ↓');
+  sWel.style.color=s30r?'#00d68f':'#ff4560';
+
+  document.getElementById('sVOL').textContent=vR>0?vR.toFixed(2)+'x':'—';
+  document.getElementById('sVOL').style.color=vR>=1.5?'#00d68f':vR>=1?'#d8e6f0':'#ff4560';
+  document.getElementById('sATR').textContent=atr>0&&c>0?(atr/c*100).toFixed(2)+'%':'—';
+  document.getElementById('sSTP').textContent=atrS>0?f2(atrS):'—';
+  document.getElementById('sE9').textContent=e9?f2(e9):'—';
+  document.getElementById('sE21').textContent=e21?f2(e21):'—';
+  document.getElementById('sE50').textContent=e50?f2(e50):'—';
+}
+
+// ════════════════════════════════════════════════════
+// SIDEBAR — MOTOR SEV4 FASE 1 (COMPLETO)
+// ════════════════════════════════════════════════════
+function sidebar(d){
+  const n=d.C.length-1;
+  const c=d.C[n],o=d.O[n],h=d.H[n],l=d.L[n];
+
+  // Valores base
+  const s30=d.s30a[n]||0;
+  const s30p=d.s30a[Math.max(0,n-5)]||0;
+  const s30prev=d.s30a[Math.max(0,n-1)]||0; // para P1 dia anterior
+  const s20=d.s20a[n]||0;
+  const e50=d.e50a[n]||0,e21=d.e21a[n]||0,e9=d.e9a[n]||0;
+  const atr=d.atrA[n]||0,atrS=d.atrSA[n]||0;
+  const adxV=d.adxR[n]||0;
+  const vL=d.V[n]||0,vAv=d.vAvg[n]||1;
+  const vR=vAv>0?vL/vAv:0;
+  const range=h-l;
+
+  // Derivados estruturais
+  const s30r=s30>s30p;
+  const slope=s30p>0?(s30-s30p)/s30p*100:0;
+  const g1=c>s30&&s30r&&c>e50;
+  const s2=c>s30&&s30r;
+  const h52=Math.max(...d.H.slice(Math.max(0,n-252)));
+  const dist=h52>0?(h52-c)/h52*100:0;
+
+  // RSI14 — usa últimas 60 barras para estabilidade
+  const rsi=calcRSI14(d.C.slice(Math.max(0,n-60)));
+
+  // ═══════════════════════════════════════════════════
+  // PRESSURE SCORE — SEV4 secção 2.9 EXACTA
+  // 6 sinais definidos no sistema. Máximo auto-calc = 7.5 (sem RS div)
+  // ═══════════════════════════════════════════════════
+  let ps=0;
+  const psLines=[];
+  const dbgLines=[];
+
+  // S1: Divergência RS — não calculável (falta benchmark)
+  // Peso: 2.0 pts — MANUAL
+  dbgLines.push(`S1 RS div:    MANUAL (+2.0 se activo)`);
+
+  // S2: Close abaixo SMA20 com volume — peso 2.0
+  // SEV4 exacto: close < SMA20 E volume > vol_avg20
+  const s2_below=(s20>0&&c<s20);
+  const s2_vol=(vR>=1.0);
+  if(s2_below&&s2_vol){
+    ps+=2.0;psLines.push('SMA20 break+vol  +2.0');
+    dbgLines.push(`S2 SMA20 brk: ACTIVO  close=${f2(c)} SMA20=${f2(s20)} vR=${vR.toFixed(2)}x`);
+  }else if(s2_below&&!s2_vol){
+    ps+=1.0;psLines.push('SMA20 break vol- +1.0');
+    dbgLines.push(`S2 SMA20 brk: PARCIAL close=${f2(c)} SMA20=${f2(s20)} vR=${vR.toFixed(2)}x (vol seco)`);
+  }else{
+    dbgLines.push(`S2 SMA20 brk: inact  close=${f2(c)} SMA20=${f2(s20)} (close>${s2_below?'<':'>'} SMA20)`);
+  }
+
+  // S3: Falha breakout / upper wick > 60% com volume ≥ 1.5x — peso 1.5
+  const wick=range>0?(h-Math.max(o,c))/range:0;
+  const s3_wick=(wick>0.6);
+  const s3_vol=(vR>=1.5);
+  if(s3_wick&&s3_vol){
+    ps+=1.5;psLines.push('Upper wick+vol   +1.5');
+    dbgLines.push(`S3 Upper wck: ACTIVO  wick=${(wick*100).toFixed(0)}% vR=${vR.toFixed(2)}x`);
+  }else{
+    dbgLines.push(`S3 Upper wck: inact  wick=${(wick*100).toFixed(0)}% vR=${vR.toFixed(2)}x`);
+  }
+
+  // S4: SMA30W flat — |slope| < 0.3%/5 semanas — peso 1.5
+  const s4_flat=(Math.abs(slope)<0.3);
+  if(s4_flat){
+    ps+=1.5;psLines.push('SMA30W flat      +1.5');
+    dbgLines.push(`S4 SMA30W fl: ACTIVO  slope=${slope.toFixed(3)}%/5W (< 0.3%)`);
+  }else{
+    dbgLines.push(`S4 SMA30W fl: inact  slope=${slope.toFixed(3)}%/5W (>${s4_flat?'':'>'} 0.3%)`);
+  }
+
+  // S5: Sobreextensão > 25% acima EMA50 — peso 1.0
+  const overext=e50>0?(c-e50)/e50*100:0;
+  const s5_over=(overext>25);
+  if(s5_over){
+    ps+=1.0;psLines.push(`Overext +${overext.toFixed(0)}%EMA50 +1.0`);
+    dbgLines.push(`S5 Sobreext:  ACTIVO  overext=${overext.toFixed(1)}% (> 25%)`);
+  }else{
+    dbgLines.push(`S5 Sobreext:  inact  overext=${overext.toFixed(1)}% (< 25%)`);
+  }
+
+  // S6: RSI > 78 — peso 0.5
+  const s6_rsi=(rsi>78);
+  if(s6_rsi){
+    ps+=0.5;psLines.push(`RSI ${rsi.toFixed(0)}>78       +0.5`);
+    dbgLines.push(`S6 RSI>78:    ACTIVO  RSI=${rsi.toFixed(1)}`);
+  }else{
+    dbgLines.push(`S6 RSI>78:    inact  RSI=${rsi.toFixed(1)}`);
+  }
+
+  ps=parseFloat(Math.min(ps,9.5).toFixed(1));
+
+  if(psLines.length===0)psLines.push('Sem sinais activos');
+  psLines.push('─────────────────');
+  psLines.push('RS div: +2.0 (manual)');
+
+  // Debug extra info
+  dbgLines.push('─────────────────────────────');
+  dbgLines.push(`TOTAL auto: ${ps.toFixed(1)}/9.5`);
+  dbgLines.push(`vR=${vR.toFixed(3)}x  vL=${(vL/1e3).toFixed(0)}K  vAvg=${(vAv/1e3).toFixed(0)}K`);
+  dbgLines.push(`SMA20=${f2(s20)}  EMA21=${f2(e21)}  EMA50=${f2(e50)}`);
+  dbgLines.push(`SMA30W=${f2(s30)} slope=${slope.toFixed(3)}%/5W`);
+  dbgLines.push(`ATR=${f2(atr)} (${atr&&c>0?(atr/c*100).toFixed(2):'—'}%)  ATRStop=${f2(atrS)}`);
+  dbgLines.push(`RSI14=${rsi.toFixed(1)}  ADX=${f1(adxV)}`);
+
+  // ═══════════════════════════════════════════════════
+  // EXITS P1-P4 — SEV4 secção 2.8 EXACTA
+  // ═══════════════════════════════════════════════════
+
+  // P1: 2 closes consecutivos abaixo SMA30W + SMA30W não rising
+  const p1_c0=c<s30;
+  const p1_c1=n>0&&d.C[n-1]<(d.s30a[n-1]||Infinity);
+  const p1=p1_c0&&p1_c1&&!s30r;
+
+  // P2: Lower Low confirmado OU defended low perdido
+  // Lower Low: mínimo actual < mínimo de janela [n-30 a n-3] com margem 0.3%
+  const llW=d.L.slice(Math.max(0,n-30),Math.max(0,n-3));
+  const swL=llW.length>3?Math.min(...llW):null;
+  const p2_ll=swL!=null&&l<swL*0.997;
+  // Defended low: close abaixo do mínimo dos últimos 5 dias (excl. hoje)
+  const dlW=d.L.slice(Math.max(0,n-5),n);
+  const defL=dlW.length>0?Math.min(...dlW):null;
+  const p2_def=defL!=null&&c<defL*0.998;
+  const p2=p2_ll||p2_def;
+
+  // P3: Volume climático — SEV4 exacto:
+  // Vol ≥ 2.5x avg + queda ≥ 3% + fecho no bottom 25% da barra
+  const p3=vR>=2.5
+    &&c<o&&o>0
+    &&(c-o)/o*100<=-3.0
+    &&range>0
+    &&(c-l)/range<0.25;
+
+  // P4: Close fechou abaixo do ATR trailing stop
+  // Stop válido: ratio ≥ 80% (evita stops muito distantes/obsoletos)
+  const stopRatio=atrS>0&&c>0?atrS/c:0;
+  const p4=atrS>0&&c<=atrS&&stopRatio>=0.80;
+
+  const anyExit=p1||p2||p3||p4;
+
+  // Proximidade ao stop: ≤ 2% mas ainda não atingido
+  const stopPct=atrS>0&&c>atrS?(c-atrS)/c*100:99;
+  const near=!p4&&atrS>0&&c>atrS&&stopPct<=2.0;
+
+  // ═══════════════════════════════════════════════════
+  // DECISÃO — hierarquia exacta SEV4
+  // ═══════════════════════════════════════════════════
+  let dec,sub,bg,col;
+
+  if(anyExit){
+    dec='SAIR TUDO';
+    sub=p4?'P4 ATR Trail atingido'
+        :p3?'P3 Vol Climático'
+        :p1?'P1 2×close < SMA30W'
+        :'P2 Lower Low';
+    bg='rgba(255,69,96,.20)';col='#ff4560';
+  }else if(ps>=5.0){
+    dec='SAIR TUDO';sub='Pressure '+ps+' ≥ 5.0';
+    bg='rgba(255,69,96,.20)';col='#ff4560';
+  }else if(ps>=4.0){
+    dec='SAÍDA PARCIAL';sub='Pressure '+ps+'/9.5';
+    bg='rgba(255,69,96,.14)';col='#ff4560';
+  }else if(ps>=2.5||near){
+    dec='APERTAR TRAIL';
+    sub=(near&&ps<2.5)
+      ?'⚠ Stop a '+stopPct.toFixed(1)+'% — Fase 4'
+      :'Pressure '+ps+' → Fase 4';
+    bg='rgba(255,184,0,.14)';col='#ffb800';
+  }else if(g1&&s2){
+    dec='MANTER';sub='Estrutura ok · Trail activo';
+    bg='rgba(0,214,143,.10)';col='#00d68f';
+  }else{
+    dec='MONITORIZAR';sub='G1 fraco — vigiar estrutura';
+    bg='rgba(255,184,0,.07)';col='#ffb800';
+  }
+
+  // ── RENDER SIDEBAR ──
+
+  // Decisão
+  const dbEl=document.getElementById('db');
+  dbEl.style.background=bg;dbEl.style.borderColor=col+'55';
+  document.getElementById('dTxt').style.color=col;
+  document.getElementById('dTxt').textContent=dec;
+  document.getElementById('dSub').textContent=sub;
+  document.getElementById('dSub').style.color=col+'cc';
+
+  // Pressure
+  const psC=ps>=4?'#ff4560':ps>=2.5?'#ffb800':'#00d68f';
+  document.getElementById('psV').textContent=ps.toFixed(1);
+  document.getElementById('psV').style.color=psC;
+  document.getElementById('psB').style.width=Math.min(100,ps/9.5*100)+'%';
+  document.getElementById('psB').style.background=psC;
+  document.getElementById('psL').textContent=psLines.join('\n');
+  document.getElementById('psL').style.color=psC+'bb';
+  document.getElementById('psM').textContent=
+    ps>=5?'→ SAÍDA TOTAL':
+    ps>=4?'→ Saída parcial':
+    ps>=2.5?'→ Apertar trail F4':
+    '→ Manter trail actual';
+  document.getElementById('psM').style.color=psC;
+
+  // Debug panel
+  document.getElementById('dbgContent').innerHTML=
+    dbgLines.map(l=>{
+      if(l.includes('ACTIVO'))return`<span class="dbg-ok">${l}</span>`;
+      if(l.includes('PARCIAL'))return`<span class="dbg-warn">${l}</span>`;
+      if(l.includes('MANUAL'))return`<span class="dbg-warn">${l}</span>`;
+      if(l.includes('─'))return`<span style="color:var(--brd)">${l}</span>`;
+      if(l.startsWith('TOTAL')||l.startsWith('vR=')||l.startsWith('SMA')||l.startsWith('ATR')||l.startsWith('RSI'))
+        return`<span class="dbg-val">${l}</span>`;
+      return`<span>${l}</span>`;
+    }).join('\n');
+
+  // Gates
+  const gg=document.getElementById('gG1');
+  gg.textContent=g1?'PASS ✓':'FAIL ✗';gg.className='gb '+(g1?'gp':'gf');
+  document.getElementById('gSt').textContent=s2?'STAGE 2':'STAGE 4';
+  document.getElementById('gSt').style.color=s2?'#00d68f':'#ff4560';
+
+  const slEl=document.getElementById('gSl');
+  slEl.textContent=(slope>=0?'+':'')+slope.toFixed(2)+'%/5W';
+  slEl.style.color=slope>1.0?'#00d68f':slope>0.3?'#ffb800':'#ff4560';
+
+  const swPct=s30>0?(c-s30)/s30*100:0;
+  const swEl=document.getElementById('gSW');
+  swEl.textContent=(swPct>=0?'+':'')+swPct.toFixed(1)+'%';
+  swEl.style.color=c>s30?'#00d68f':'#ff4560';
+
+  const d52=document.getElementById('g52');
+  d52.textContent='-'+dist.toFixed(1)+'%';
+  d52.style.color=dist<=8?'#00d68f':dist<=15?'#ffb800':'#ff4560';
+
+  // Exits
+  const se=(id,on)=>{
+    const e=document.getElementById(id);
+    e.textContent=on?'⚠ ATIVO':'ok';
+    e.className=on?'ea':'eo';
+  };
+  se('eP1',p1);se('eP2',p2);se('eP3',p3);se('eP4',p4);
+
+  // Métricas
+  const mSel=document.getElementById('mS');
+  mSel.textContent=atrS>0
+    ?f2(atrS)+(near?' ⚠ '+stopPct.toFixed(1)+'%':'')
+    :'—';
+  mSel.style.color=p4?'#ff4560':near?'#ffb800':'#ff4560';
+
+  const s20pct=s20>0?(c-s20)/s20*100:null;
+  const ms20=document.getElementById('mS20');
+  ms20.textContent=s20>0?f2(s20)+' ('+(s20pct>=0?'+':'')+s20pct.toFixed(1)+'%)':'—';
+  ms20.style.color=(s20pct!=null&&c>s20)?'#00d68f':'#ff4560';
+
+  const e50pct=e50>0?(c-e50)/e50*100:null;
+  const me50=document.getElementById('mE50');
+  me50.textContent=e50pct!=null?(e50pct>=0?'+':'')+e50pct.toFixed(1)+'%':'—';
+  me50.style.color=(e50pct!=null&&e50pct>=0)?'#00d68f':'#ff4560';
+
+  document.getElementById('mADX').textContent=adxV?f1(adxV):'—';
+  document.getElementById('mADX').style.color=adxV>=25?'#00d68f':adxV>=15?'#ffb800':'#ff4560';
+
+  document.getElementById('mVol').textContent=vR>0?vR.toFixed(2)+'x':'—';
+  document.getElementById('mVol').style.color=vR>=1.5?'#00d68f':vR>=1?'#d8e6f0':'#ff4560';
+
+  document.getElementById('mATRp').textContent=atr>0&&c>0?(atr/c*100).toFixed(2)+'%':'—';
+
+  const rsiEl=document.getElementById('mRSI');
+  rsiEl.textContent=f1(rsi);
+  rsiEl.style.color=rsi>78?'#ff4560':rsi>65?'#ffb800':rsi<35?'#4dabf7':'#d8e6f0';
+}
+
+// ── Eventos
+document.getElementById('tk').addEventListener('keydown',e=>{if(e.key==='Enter')go()});
+window.addEventListener('resize',()=>{if(D)drawP(D)});
+</script>
+</body>
+</html>
